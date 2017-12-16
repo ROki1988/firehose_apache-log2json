@@ -49,7 +49,7 @@ impl std::error::Error for LogError {
 
 fn apache_log2json(s: &str) -> Result<serde_json::Value, Box<std::error::Error>>  {
     let xs = RE.captures(s).ok_or(LogError::ApacheParseError)?;
-    println!("{}", xs[4].to_string());
+
     let time =
         DateTime::parse_from_str(&xs[4], "%d/%b/%Y:%H:%M:%S %:z")
             .or(DateTime::parse_from_str(&xs[4], "%d/%b/%Y:%H:%M:%S %z"))?;
