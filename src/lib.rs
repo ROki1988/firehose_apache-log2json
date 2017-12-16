@@ -103,9 +103,11 @@ fn transform_record(record: &FirehoseRecord) -> TransformationRecord {
 
 fn my_handler(event: Value, context: LambdaContext) -> LambdaResult {
     let xs: FirehoseEvent = serde_json::from_value(event)?;
-    let h = xs.records.iter()
-        .map(|x| transform_record(x))
-        .collect::<Vec<TransformationRecord>>();
+    let h = TransformationEvent {
+        records: xs.records.iter()
+        .map( | x| transform_record(x))
+        .collect:: < Vec<TransformationRecord> > (),
+    };
 
     Ok(serde_json::to_value(h)?)
 }
@@ -129,10 +131,15 @@ struct FirehoseRecord {
     approximate_arrival_timestamp: f64,
 }
 
+#[derive(Serialize, Debug)]
+struct TransformationEvent<'a> {
+    records: Vec<TransformationRecord<'a>>,
+}
+
 static OK: &'static str = "Ok";
 static NG: &'static str = "ProcessingFailed";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 struct TransformationRecord<'a> {
     #[serde(rename="recordId")]
     record_id: &'a str,
