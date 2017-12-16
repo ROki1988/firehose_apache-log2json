@@ -122,7 +122,7 @@ struct FirehoseEvent {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct FirehoseRecord {
-    #[serde(rename="record_id")]
+    #[serde(rename="recordId")]
     record_id: String,
     data: String,
     #[serde(rename="approximateArrivalTimestamp")]
@@ -134,7 +134,7 @@ static NG: &'static str = "ProcessingFailed";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TransformationRecord<'a> {
-    #[serde(rename="record_id")]
+    #[serde(rename="recordId")]
     record_id: &'a str,
     result: &'static str,
     data: String,
