@@ -12,7 +12,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 extern crate regex;
 
 use chrono::prelude::*;
@@ -30,7 +31,7 @@ enum LogError {
 }
 
 impl std::fmt::Display for LogError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) ->  std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
             LogError::ApacheParseError => {
                 write!(f, "FAIL. unmatched pattern.")
@@ -47,7 +48,7 @@ impl std::error::Error for LogError {
     }
 }
 
-fn apache_log2json(s: &str) -> Result<serde_json::Value, Box<std::error::Error>>  {
+fn apache_log2json(s: &str) -> Result<serde_json::Value, Box<std::error::Error>> {
     let xs = RE.captures(s).ok_or(LogError::ApacheParseError)?;
 
     let time =
@@ -69,7 +70,7 @@ fn apache_log2json(s: &str) -> Result<serde_json::Value, Box<std::error::Error>>
 fn transform_data(data: Vec<u8>) -> std::result::Result<Vec<u8>, Box<std::error::Error>> {
     let s = String::from_utf8(data)?;
 
-    let r =  apache_log2json(s.as_str())?;
+    let r = apache_log2json(s.as_str())?;
 
     Ok(serde_json::to_vec(&r)?)
 }
@@ -87,13 +88,13 @@ fn transform_record(record: &FirehoseRecord) -> TransformationRecord {
         .map_err::<Box<std::error::Error>, _>(|e| Box::new(e))
         .and_then(|x|
             transform_data(x)
-            .map(|x|
-                TransformationRecord {
-                    record_id: record.record_id.as_str(),
-                    data: BASE64.encode(x.as_ref()),
-                    result: OK,
-                }
-            )
+                .map(|x|
+                    TransformationRecord {
+                        record_id: record.record_id.as_str(),
+                        data: BASE64.encode(x.as_ref()),
+                        result: OK,
+                    }
+                )
         )
         .unwrap_or(
             TransformationRecord {
@@ -108,8 +109,8 @@ fn my_handler(event: Value, context: LambdaContext) -> LambdaResult {
     let xs: FirehoseEvent = serde_json::from_value(event)?;
     let h = TransformationEvent {
         records: xs.records.iter()
-        .map( | x| transform_record(x))
-        .collect:: < Vec<TransformationRecord> > (),
+            .map(|x| transform_record(x))
+            .collect::<Vec<TransformationRecord>>(),
     };
 
     Ok(serde_json::to_value(h)?)
@@ -121,16 +122,16 @@ lambda!(my_handler);
 struct FirehoseEvent {
     records: Vec<FirehoseRecord>,
     region: String,
-    #[serde(rename="invocationId")]
+    #[serde(rename = "invocationId")]
     invocation_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct FirehoseRecord {
-    #[serde(rename="recordId")]
+    #[serde(rename = "recordId")]
     record_id: String,
     data: String,
-    #[serde(rename="approximateArrivalTimestamp")]
+    #[serde(rename = "approximateArrivalTimestamp")]
     approximate_arrival_timestamp: f64,
 }
 
@@ -144,7 +145,7 @@ static NG: &'static str = "ProcessingFailed";
 
 #[derive(Serialize, Debug)]
 struct TransformationRecord<'a> {
-    #[serde(rename="recordId")]
+    #[serde(rename = "recordId")]
     record_id: &'a str,
     result: &'static str,
     data: String,
