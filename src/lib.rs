@@ -66,13 +66,12 @@ fn apache_log2json(s: &str) -> Result<serde_json::Value, Box<std::error::Error>>
     }))
 }
 
-fn transform_data(data: &[u8]) -> std::result::Result<Vec<u8>, Box<std::error::Error>> {
-    let d =  BASE64.decode(data)?;
-    let s = String::from_utf8(d)?;
+fn transform_data(data: Vec<u8>) -> std::result::Result<Vec<u8>, Box<std::error::Error>> {
+    let s = String::from_utf8(data)?;
 
     let r =  apache_log2json(s.as_str())?;
 
-    serde_json::to_vec(&r).or(Err(Box::new(LogError::ApacheParseError)))
+    Ok(serde_json::to_vec(&r)?)
 }
 
 #[test]
@@ -84,13 +83,17 @@ fn transform_data_test() {
 }
 
 fn transform_record(record: &FirehoseRecord) -> TransformationRecord {
-    transform_data(record.data.as_bytes())
-        .map(|x|
-            TransformationRecord {
-                record_id: record.record_id.as_str(),
-                data: BASE64.encode(x.as_ref()).as_str().to_owned(),
-                result: OK,
-            }
+    BASE64.decode(record.data.as_bytes())
+        .map_err::<Box<std::error::Error>, _>(|e| Box::new(e))
+        .and_then(|x|
+            transform_data(x)
+            .map(|x|
+                TransformationRecord {
+                    record_id: record.record_id.as_str(),
+                    data: BASE64.encode(x.as_ref()).as_str().to_owned(),
+                    result: OK,
+                }
+            )
         )
         .unwrap_or(
             TransformationRecord {
