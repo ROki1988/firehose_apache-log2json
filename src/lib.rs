@@ -15,11 +15,13 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
+extern crate rayon;
 
 use chrono::prelude::*;
 use data_encoding::BASE64;
 use crowbar::{Value, LambdaContext, LambdaResult};
 use regex::Regex;
+use rayon::prelude::*;
 
 lazy_static! {
     static ref RE: Regex = Regex::new(r#"^([\d.]+) (\S+) (\S+) \[([\w:/]+\s[\+\-]\d{2}:?\d{2}){0,1}\] "(.+?)" (\d{3}) (\d+)"#).unwrap();
@@ -108,7 +110,7 @@ fn transform_record(record: &FirehoseRecord) -> TransformationRecord {
 fn my_handler(event: Value, context: LambdaContext) -> LambdaResult {
     let xs: FirehoseEvent = serde_json::from_value(event)?;
     let h = TransformationEvent {
-        records: xs.records.iter()
+        records: xs.records.par_iter()
             .map(|x| transform_record(x))
             .collect::<Vec<TransformationRecord>>(),
     };
