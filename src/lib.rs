@@ -90,7 +90,7 @@ fn transform_record(record: &FirehoseRecord) -> TransformationRecord {
             .map(|x|
                 TransformationRecord {
                     record_id: record.record_id.as_str(),
-                    data: BASE64.encode(x.as_ref()).as_str().to_owned(),
+                    data: BASE64.encode(x.as_ref()),
                     result: OK,
                 }
             )
