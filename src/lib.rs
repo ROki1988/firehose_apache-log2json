@@ -7,7 +7,6 @@ extern crate chrono;
 extern crate data_encoding;
 
 extern crate serde;
-#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
@@ -35,7 +34,7 @@ enum LogError {
     EncodingError(data_encoding::DecodeError),
     DateTimeParseError(chrono::ParseError),
     IntError(std::num::ParseIntError),
-    JsonError(serde_json::error::Error)
+    JsonError(serde_json::Error)
 }
 
 impl From<std::string::FromUtf8Error> for LogError {
@@ -62,8 +61,8 @@ impl From<std::num::ParseIntError> for LogError {
     }
 }
 
-impl From<serde_json::error::Error> for LogError {
-    fn from(err: serde_json::error::Error) -> LogError {
+impl From<serde_json::Error> for LogError {
+    fn from(err: serde_json::Error) -> LogError {
         LogError::JsonError(err)
     }
 }
@@ -101,16 +100,18 @@ fn apache_log2json(s: &str) -> Result<serde_json::Value, LogError> {
         DateTime::parse_from_str(&xs[4], "%d/%b/%Y:%H:%M:%S %:z")
             .or(DateTime::parse_from_str(&xs[4], "%d/%b/%Y:%H:%M:%S %z"))?;
     xs[6].parse::<u32>()?;
-    Ok(json!({
-         "host": xs[1],
-        "ident": xs[2],
-        "authuser": xs[3],
-        "@timestamp": time.to_rfc3339(),
-        "@timestamp_utc": time.with_timezone(&Utc).to_rfc3339(),
-        "request": xs[5],
-        "response": xs[6].parse::<u32>()?,
-        "bytes": xs[7].parse::<u32>()?,
-    }))
+
+    let log =  AccessLog {
+        host: xs[1].to_owned(),
+        ident: xs[2].to_owned(),
+        authuser: xs[3].to_owned(),
+        timestamp: time.to_rfc3339(),
+        timestamp_utc: time.with_timezone(&Utc).to_rfc3339(),
+        request: xs[5].to_owned(),
+        response: xs[6].parse::<u32>()?,
+        bytes: xs[7].parse::<u32>()?,
+    };
+    serde_json::to_value(log).map_err(|e| LogError::JsonError(e))
 }
 
 fn transform_data(data: Vec<u8>) -> std::result::Result<Vec<u8>, LogError> {
@@ -118,7 +119,7 @@ fn transform_data(data: Vec<u8>) -> std::result::Result<Vec<u8>, LogError> {
 
     let r = apache_log2json(s.as_str())?;
 
-    Ok(serde_json::to_vec(&r)?)
+    serde_json::to_vec(&r).map_err(|e| LogError::JsonError(e))
 }
 
 #[test]
@@ -151,6 +152,7 @@ fn transform_record(record: &FirehoseRecord) -> TransformationRecord {
 }
 
 fn my_handler(event: Value, context: LambdaContext) -> LambdaResult {
+    println!("{}", context.invoked_function_arn());
     let xs: FirehoseEvent = serde_json::from_value(event)?;
     let h = TransformationEvent {
         records: xs.records.par_iter()
@@ -162,6 +164,20 @@ fn my_handler(event: Value, context: LambdaContext) -> LambdaResult {
 }
 
 lambda!(my_handler);
+
+#[derive(Serialize, Deserialize, Debug)]
+struct AccessLog {
+    host: String,
+    ident: String,
+    authuser: String,
+    #[serde(rename = "@timestamp")]
+    timestamp: String,
+    #[serde(rename = "@timestamp_utc")]
+    timestamp_utc: String,
+    request: String,
+    response: u32,
+    bytes: u32,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct FirehoseEvent {
